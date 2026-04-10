@@ -383,7 +383,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-3 py-4 sm:gap-8 sm:px-6 sm:py-8 lg:px-8">
         <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm font-medium text-blue-700">MVP Step 4</p>
           <h1 className="mt-2 text-2xl font-bold sm:text-3xl">
@@ -404,7 +404,7 @@ export default function Home() {
             </p>
             <div
               {...getRootProps()}
-              className={`mt-4 cursor-pointer rounded-xl border border-dashed p-8 text-center text-sm transition ${
+              className={`mt-4 cursor-pointer rounded-xl border border-dashed p-5 text-center text-sm transition sm:p-8 ${
                 isDragActive
                   ? "border-blue-500 bg-blue-50 text-blue-700"
                   : "border-slate-300 bg-slate-50 text-slate-500 hover:border-blue-400 hover:bg-blue-50/50"
@@ -486,7 +486,7 @@ export default function Home() {
               type="button"
               disabled={selectedFiles.length === 0 || isAnalyzing}
               onClick={handleAnalyze}
-              className="mt-4 inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto sm:py-2"
             >
               {isAnalyzing ? "AI 분석 중..." : "AI 분석 시작"}
             </button>
@@ -509,7 +509,7 @@ export default function Home() {
               분석 내역을 표로 확인하고 수정/확정합니다. 수입/지출 합계도 함께
               계산됩니다.
             </p>
-            <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+            <div className="mt-4 hidden overflow-x-auto rounded-xl border border-slate-200 md:block">
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-100 text-slate-700">
                   <tr>
@@ -617,6 +617,86 @@ export default function Home() {
               </table>
             </div>
 
+            <div className="mt-4 space-y-3 md:hidden">
+              {analysisResult.length === 0 ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
+                  분석된 데이터가 없습니다.
+                </div>
+              ) : (
+                analysisResult.map((row, index) => (
+                  <div
+                    key={`${row.date}-${row.occurredDate}-${row.description}-${index}-mobile`}
+                    className="rounded-xl border border-slate-200 bg-white p-3"
+                  >
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <label className="text-slate-500">날짜</label>
+                      <input
+                        value={row.date}
+                        onChange={(e) => handleEditRow(index, "date", e.target.value)}
+                        className="rounded border border-slate-300 px-2 py-1 text-sm"
+                      />
+                      <label className="text-slate-500">발생일</label>
+                      <input
+                        value={row.occurredDate}
+                        onChange={(e) =>
+                          handleEditRow(index, "occurredDate", e.target.value)
+                        }
+                        className="rounded border border-slate-300 px-2 py-1 text-sm"
+                      />
+                    </div>
+                    <div className="mt-2 space-y-2">
+                      <input
+                        value={row.description}
+                        onChange={(e) =>
+                          handleEditRow(index, "description", e.target.value)
+                        }
+                        placeholder="결제처/내용"
+                        className="w-full rounded border border-slate-300 px-2 py-2 text-sm"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          value={row.amount}
+                          onChange={(e) => handleEditRow(index, "amount", e.target.value)}
+                          className="w-full rounded border border-slate-300 px-2 py-2 text-sm text-right"
+                        />
+                        <select
+                          value={row.type}
+                          onChange={(e) => handleEditRow(index, "type", e.target.value)}
+                          className="w-full rounded border border-slate-300 px-2 py-2 text-sm"
+                        >
+                          <option value="지출">지출</option>
+                          <option value="수입">수입</option>
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={row.category}
+                          onChange={(e) =>
+                            handleEditRow(index, "category", e.target.value)
+                          }
+                          className="w-full rounded border border-slate-300 px-2 py-2 text-sm"
+                        >
+                          <option value="">종류 선택</option>
+                          {CATEGORY_OPTIONS.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          value={row.note}
+                          onChange={(e) => handleEditRow(index, "note", e.target.value)}
+                          placeholder="비고"
+                          className="w-full rounded border border-slate-300 px-2 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
             <div className="mt-4 grid gap-2 rounded-xl bg-slate-100 p-3 text-sm text-slate-700">
               <p>수입 합계: {totals.income.toLocaleString()}원</p>
               <p>지출 합계: {totals.expense.toLocaleString()}원</p>
@@ -625,12 +705,12 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="mt-4 flex items-center gap-3">
+            <div className="mt-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
               <button
                 type="button"
                 disabled={analysisResult.length === 0}
                 onClick={handleConfirm}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto sm:py-2"
               >
                 내역 확정
               </button>
@@ -673,7 +753,7 @@ export default function Home() {
                     </li>
                   </ul>
 
-                  <div className="overflow-x-auto rounded-lg border border-slate-200">
+                  <div className="hidden overflow-x-auto rounded-lg border border-slate-200 md:block">
                     <table className="min-w-full text-xs sm:text-sm">
                       <thead className="bg-slate-100 text-slate-700">
                         <tr>
@@ -792,6 +872,88 @@ export default function Home() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                  <div className="space-y-2 md:hidden">
+                    {savedHistory.slice(0, 20).map((item, index) => (
+                      <div
+                        key={`${item.savedAt}-${item.date}-${item.amount}-${index}-mobile`}
+                        className="rounded-lg border border-slate-200 bg-white p-3"
+                      >
+                        <p className="text-[11px] text-slate-500">
+                          저장시각: {new Date(item.savedAt).toLocaleString()}
+                        </p>
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          <input
+                            value={item.date}
+                            onChange={(e) =>
+                              handleEditSavedRow(index, "date", e.target.value)
+                            }
+                            className="rounded border border-slate-300 px-2 py-2 text-sm"
+                          />
+                          <input
+                            value={item.occurredDate}
+                            onChange={(e) =>
+                              handleEditSavedRow(index, "occurredDate", e.target.value)
+                            }
+                            className="rounded border border-slate-300 px-2 py-2 text-sm"
+                          />
+                          <input
+                            value={item.amount}
+                            onChange={(e) =>
+                              handleEditSavedRow(index, "amount", e.target.value)
+                            }
+                            className="rounded border border-slate-300 px-2 py-2 text-sm text-right"
+                          />
+                          <select
+                            value={item.type}
+                            onChange={(e) =>
+                              handleEditSavedRow(index, "type", e.target.value)
+                            }
+                            className="rounded border border-slate-300 px-2 py-2 text-sm"
+                          >
+                            <option value="지출">지출</option>
+                            <option value="수입">수입</option>
+                          </select>
+                        </div>
+                        <input
+                          value={item.description}
+                          onChange={(e) =>
+                            handleEditSavedRow(index, "description", e.target.value)
+                          }
+                          className="mt-2 w-full rounded border border-slate-300 px-2 py-2 text-sm"
+                        />
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          <select
+                            value={item.category}
+                            onChange={(e) =>
+                              handleEditSavedRow(index, "category", e.target.value)
+                            }
+                            className="rounded border border-slate-300 px-2 py-2 text-sm"
+                          >
+                            <option value="">선택</option>
+                            {CATEGORY_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            value={item.note}
+                            onChange={(e) =>
+                              handleEditSavedRow(index, "note", e.target.value)
+                            }
+                            className="rounded border border-slate-300 px-2 py-2 text-sm"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSavedRow(index)}
+                          className="mt-2 w-full rounded border border-rose-300 px-2 py-2 text-xs text-rose-700 hover:bg-rose-50"
+                        >
+                          이 항목 삭제
+                        </button>
+                      </div>
+                    ))}
                   </div>
                   {savedHistory.length > 20 ? (
                     <p className="text-xs text-slate-500">
