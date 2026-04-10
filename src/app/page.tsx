@@ -41,10 +41,19 @@ type SavedTransactionItem = TransactionItem & {
 
 const LOCAL_STORAGE_KEY = "finance-ocr-confirmed-transactions";
 
+function normalizeDateInput(value: string): string {
+  const raw = (value ?? "").trim();
+  if (!raw) return "";
+  const normalized = raw.replace(/[./]/g, "-");
+  const match = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!match) return raw;
+  return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
+}
+
 function normalizeTransactionItem(item: Partial<TransactionItem>): TransactionItem {
   return {
-    date: item.date ?? "",
-    occurredDate: item.occurredDate ?? item.date ?? "",
+    date: normalizeDateInput(item.date ?? ""),
+    occurredDate: normalizeDateInput(item.occurredDate ?? item.date ?? ""),
     description: item.description ?? "",
     amount: Number(item.amount ?? 0),
     type: item.type === "수입" ? "수입" : "지출",
@@ -79,6 +88,7 @@ export default function Home() {
   const [savedHistory, setSavedHistory] = useState<SavedTransactionItem[]>([]);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [activePreviewUrl, setActivePreviewUrl] = useState<string | null>(null);
+  const [isSavedModalOpen, setIsSavedModalOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -257,6 +267,9 @@ export default function Home() {
               type: value === "수입" ? "수입" : "지출",
             };
           }
+          if (field === "date" || field === "occurredDate") {
+            return { ...row, [field]: normalizeDateInput(value) };
+          }
           return { ...row, [field]: value };
         }),
       );
@@ -279,7 +292,8 @@ export default function Home() {
     const monthMap = new Map<string, { income: number; expense: number }>();
 
     for (const item of savedHistory) {
-      const monthKey = item.occurredDate.slice(0, 7);
+      const monthKey = normalizeDateInput(item.occurredDate).slice(0, 7);
+      if (!/^\d{4}-\d{2}$/.test(monthKey)) continue;
       if (!monthMap.has(monthKey)) {
         monthMap.set(monthKey, { income: 0, expense: 0 });
       }
@@ -360,6 +374,9 @@ export default function Home() {
         if (field === "type") {
           const nextType: TransactionType = value === "수입" ? "수입" : "지출";
           return { ...row, type: nextType };
+        }
+        if (field === "date" || field === "occurredDate") {
+          return { ...row, [field]: normalizeDateInput(value) } as SavedTransactionItem;
         }
         return { ...row, [field]: value } as SavedTransactionItem;
       });
@@ -531,6 +548,7 @@ export default function Home() {
                       >
                         <td className="px-3 py-2">
                           <input
+                            type="date"
                             value={row.date}
                             onChange={(e) =>
                               handleEditRow(index, "date", e.target.value)
@@ -540,6 +558,7 @@ export default function Home() {
                         </td>
                         <td className="px-3 py-2">
                           <input
+                            type="date"
                             value={row.occurredDate}
                             onChange={(e) =>
                               handleEditRow(index, "occurredDate", e.target.value)
@@ -631,12 +650,14 @@ export default function Home() {
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <label className="text-slate-500">날짜</label>
                       <input
+                        type="date"
                         value={row.date}
                         onChange={(e) => handleEditRow(index, "date", e.target.value)}
                         className="rounded border border-slate-300 px-2 py-1 text-sm"
                       />
                       <label className="text-slate-500">발생일</label>
                       <input
+                        type="date"
                         value={row.occurredDate}
                         onChange={(e) =>
                           handleEditRow(index, "occurredDate", e.target.value)
@@ -731,13 +752,22 @@ export default function Home() {
             <div className="mt-5 rounded-xl border border-slate-200 p-4">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold text-slate-800">저장된 내역</h3>
-                <button
-                  type="button"
-                  onClick={handleResetAll}
-                  className="text-xs text-rose-500 underline underline-offset-2 hover:text-rose-700"
-                >
-                  전체 초기화
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsSavedModalOpen(true)}
+                    className="text-xs text-blue-600 underline underline-offset-2 hover:text-blue-800"
+                  >
+                    저장된 내역 창 열기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetAll}
+                    className="text-xs text-rose-500 underline underline-offset-2 hover:text-rose-700"
+                  >
+                    전체 초기화
+                  </button>
+                </div>
               </div>
               {savedHistory.length === 0 ? (
                 <p className="mt-2 text-sm text-slate-500">
@@ -779,6 +809,7 @@ export default function Home() {
                             </td>
                             <td className="whitespace-nowrap px-2 py-2">
                               <input
+                                type="date"
                                 value={item.date}
                                 onChange={(e) =>
                                   handleEditSavedRow(index, "date", e.target.value)
@@ -788,6 +819,7 @@ export default function Home() {
                             </td>
                             <td className="whitespace-nowrap px-2 py-2">
                               <input
+                                type="date"
                                 value={item.occurredDate}
                                 onChange={(e) =>
                                   handleEditSavedRow(
@@ -884,6 +916,7 @@ export default function Home() {
                         </p>
                         <div className="mt-2 grid grid-cols-2 gap-2">
                           <input
+                            type="date"
                             value={item.date}
                             onChange={(e) =>
                               handleEditSavedRow(index, "date", e.target.value)
@@ -891,6 +924,7 @@ export default function Home() {
                             className="rounded border border-slate-300 px-2 py-2 text-sm"
                           />
                           <input
+                            type="date"
                             value={item.occurredDate}
                             onChange={(e) =>
                               handleEditSavedRow(index, "occurredDate", e.target.value)
@@ -1029,6 +1063,108 @@ export default function Home() {
           </article>
         </section>
       </main>
+
+      {isSavedModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
+          onClick={() => setIsSavedModalOpen(false)}
+        >
+          <div
+            className="h-[88vh] w-full overflow-hidden rounded-t-2xl bg-white sm:h-[90vh] sm:max-w-6xl sm:rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 p-4">
+              <h3 className="text-base font-semibold text-slate-900">저장된 내역</h3>
+              <button
+                type="button"
+                className="rounded-md border border-slate-300 px-3 py-1 text-sm"
+                onClick={() => setIsSavedModalOpen(false)}
+              >
+                닫기
+              </button>
+            </div>
+            <div className="h-[calc(88vh-57px)] overflow-y-auto p-4 sm:h-[calc(90vh-57px)]">
+              {savedHistory.length === 0 ? (
+                <p className="text-sm text-slate-500">저장된 내역이 없습니다.</p>
+              ) : (
+                <div className="space-y-2">
+                  {savedHistory.map((item, index) => (
+                    <div key={`${item.savedAt}-${index}`} className="rounded-lg border border-slate-200 p-3">
+                      <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                        <input
+                          type="date"
+                          value={item.date}
+                          onChange={(e) => handleEditSavedRow(index, "date", e.target.value)}
+                          className="rounded border border-slate-300 px-2 py-2"
+                        />
+                        <input
+                          type="date"
+                          value={item.occurredDate}
+                          onChange={(e) =>
+                            handleEditSavedRow(index, "occurredDate", e.target.value)
+                          }
+                          className="rounded border border-slate-300 px-2 py-2"
+                        />
+                        <input
+                          type="number"
+                          value={item.amount}
+                          onChange={(e) =>
+                            handleEditSavedRow(index, "amount", e.target.value)
+                          }
+                          className="rounded border border-slate-300 px-2 py-2 text-right"
+                        />
+                        <select
+                          value={item.type}
+                          onChange={(e) => handleEditSavedRow(index, "type", e.target.value)}
+                          className="rounded border border-slate-300 px-2 py-2"
+                        >
+                          <option value="지출">지출</option>
+                          <option value="수입">수입</option>
+                        </select>
+                      </div>
+                      <input
+                        value={item.description}
+                        onChange={(e) =>
+                          handleEditSavedRow(index, "description", e.target.value)
+                        }
+                        className="mt-2 w-full rounded border border-slate-300 px-2 py-2 text-sm"
+                      />
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <select
+                          value={item.category}
+                          onChange={(e) =>
+                            handleEditSavedRow(index, "category", e.target.value)
+                          }
+                          className="rounded border border-slate-300 px-2 py-2 text-sm"
+                        >
+                          <option value="">선택</option>
+                          {CATEGORY_OPTIONS.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          value={item.note}
+                          onChange={(e) => handleEditSavedRow(index, "note", e.target.value)}
+                          className="rounded border border-slate-300 px-2 py-2 text-sm"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSavedRow(index)}
+                        className="mt-2 w-full rounded border border-rose-300 px-2 py-2 text-xs text-rose-700 hover:bg-rose-50"
+                      >
+                        이 항목 삭제
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {activePreviewUrl ? (
         <div
