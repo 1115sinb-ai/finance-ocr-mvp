@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useDropzone } from "react-dropzone";
+import { useDropzone, type FileRejection } from "react-dropzone";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_FILES = 10;
@@ -103,7 +103,7 @@ export default function Home() {
     }
   }, []);
 
-  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: { errors: { code: string }[] }[]) => {
+  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
     setUploadError(null);
 
     if (rejectedFiles.length > 0) {
@@ -349,17 +349,19 @@ export default function Home() {
       field: "date" | "occurredDate" | "description" | "amount" | "type" | "category" | "note",
       value: string,
     ) => {
-      const nextSaved = savedHistory.map((row, index) => {
+      const nextSaved: SavedTransactionItem[] = savedHistory.map((row, index) => {
         if (index !== rowIndex) return row;
         if (field === "amount") {
           const amount = Number(value) || 0;
-          const nextType = amount > 0 ? "수입" : amount < 0 ? "지출" : row.type;
+          const nextType: TransactionType =
+            amount > 0 ? "수입" : amount < 0 ? "지출" : row.type;
           return { ...row, amount, type: nextType };
         }
         if (field === "type") {
-          return { ...row, type: value === "수입" ? "수입" : "지출" };
+          const nextType: TransactionType = value === "수입" ? "수입" : "지출";
+          return { ...row, type: nextType };
         }
-        return { ...row, [field]: value };
+        return { ...row, [field]: value } as SavedTransactionItem;
       });
 
       setSavedHistory(nextSaved);
