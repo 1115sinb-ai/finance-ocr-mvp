@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
 
@@ -40,6 +41,7 @@ type SavedTransactionItem = TransactionItem & {
 };
 
 const LOCAL_STORAGE_KEY = "finance-ocr-confirmed-transactions";
+const DRAFT_STORAGE_KEY = "finance-ocr-analysis-draft";
 
 function normalizeDateInput(value: string): string {
   const raw = (value ?? "").trim();
@@ -88,7 +90,6 @@ export default function Home() {
   const [savedHistory, setSavedHistory] = useState<SavedTransactionItem[]>([]);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [activePreviewUrl, setActivePreviewUrl] = useState<string | null>(null);
-  const [isSavedModalOpen, setIsSavedModalOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -112,6 +113,33 @@ export default function Home() {
       setSaveMessage("저장 내역을 불러오지 못했습니다.");
     }
   }, []);
+
+  useEffect(() => {
+    try {
+      const rawDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!rawDraft) return;
+      const parsed = JSON.parse(rawDraft) as Partial<TransactionItem>[];
+      if (!Array.isArray(parsed)) return;
+      setAnalysisResult(parsed.map((item) => normalizeTransactionItem(item)));
+      if (parsed.length > 0) {
+        setSaveMessage("이전 작업 내역(임시저장)을 불러왔습니다.");
+      }
+    } catch {
+      // Ignore malformed draft data.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (analysisResult.length === 0) {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+        return;
+      }
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(analysisResult));
+    } catch {
+      // Ignore storage quota errors.
+    }
+  }, [analysisResult]);
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
     setUploadError(null);
@@ -288,33 +316,6 @@ export default function Home() {
     return { income, expense, net: income - expense };
   }, [analysisResult]);
 
-  const monthlySummary = useMemo(() => {
-    const monthMap = new Map<string, { income: number; expense: number }>();
-
-    for (const item of savedHistory) {
-      const monthKey = normalizeDateInput(item.occurredDate).slice(0, 7);
-      if (!/^\d{4}-\d{2}$/.test(monthKey)) continue;
-      if (!monthMap.has(monthKey)) {
-        monthMap.set(monthKey, { income: 0, expense: 0 });
-      }
-      const bucket = monthMap.get(monthKey)!;
-      if (item.type === "수입") {
-        bucket.income += item.amount;
-      } else {
-        bucket.expense += Math.abs(item.amount);
-      }
-    }
-
-    return Array.from(monthMap.entries())
-      .map(([month, values]) => ({
-        month,
-        income: values.income,
-        expense: values.expense,
-        net: values.income - values.expense,
-      }))
-      .sort((a, b) => b.month.localeCompare(a.month));
-  }, [savedHistory]);
-
   const handleConfirm = useCallback(() => {
     if (analysisResult.length === 0) return;
 
@@ -338,65 +339,6 @@ export default function Home() {
       setSaveMessage("저장에 실패했습니다. 브라우저 저장공간을 확인해주세요.");
     }
   }, [analysisResult, savedHistory]);
-
-  const handleResetAll = useCallback(() => {
-    try {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-    } catch {
-      // Ignore localStorage cleanup errors and still reset UI state.
-    }
-
-    setSelectedFiles([]);
-    setUploadError(null);
-    setAnalyzeError(null);
-    setIsAnalyzing(false);
-    setAnalysisResult([]);
-    setConfirmedResult(null);
-    setSavedHistory([]);
-    setSaveMessage("저장 내역과 현재 작업 상태를 모두 초기화했습니다.");
-    setActivePreviewUrl(null);
-  }, []);
-
-  const handleEditSavedRow = useCallback(
-    (
-      rowIndex: number,
-      field: "date" | "occurredDate" | "description" | "amount" | "type" | "category" | "note",
-      value: string,
-    ) => {
-      const nextSaved: SavedTransactionItem[] = savedHistory.map((row, index) => {
-        if (index !== rowIndex) return row;
-        if (field === "amount") {
-          const amount = Number(value) || 0;
-          const nextType: TransactionType =
-            amount > 0 ? "수입" : amount < 0 ? "지출" : row.type;
-          return { ...row, amount, type: nextType };
-        }
-        if (field === "type") {
-          const nextType: TransactionType = value === "수입" ? "수입" : "지출";
-          return { ...row, type: nextType };
-        }
-        if (field === "date" || field === "occurredDate") {
-          return { ...row, [field]: normalizeDateInput(value) } as SavedTransactionItem;
-        }
-        return { ...row, [field]: value } as SavedTransactionItem;
-      });
-
-      setSavedHistory(nextSaved);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(nextSaved));
-      setSaveMessage("저장된 내역을 수정했습니다.");
-    },
-    [savedHistory],
-  );
-
-  const handleDeleteSavedRow = useCallback(
-    (rowIndex: number) => {
-      const nextSaved = savedHistory.filter((_, index) => index !== rowIndex);
-      setSavedHistory(nextSaved);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(nextSaved));
-      setSaveMessage("선택한 저장 내역 1건을 삭제했습니다.");
-    },
-    [savedHistory],
-  );
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -753,283 +695,26 @@ export default function Home() {
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold text-slate-800">저장된 내역</h3>
                 <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsSavedModalOpen(true)}
+                  <Link
+                    href="/saved"
                     className="text-xs text-blue-600 underline underline-offset-2 hover:text-blue-800"
                   >
-                    저장된 내역 창 열기
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleResetAll}
-                    className="text-xs text-rose-500 underline underline-offset-2 hover:text-rose-700"
-                  >
-                    전체 초기화
-                  </button>
+                    저장된 내역 페이지 열기
+                  </Link>
                 </div>
               </div>
-              {savedHistory.length === 0 ? (
-                <p className="mt-2 text-sm text-slate-500">
-                  아직 저장된 내역이 없습니다.
+              <div className="mt-2 space-y-1 text-sm text-slate-600">
+                <p>총 저장 건수: {savedHistory.length}건</p>
+                <p>
+                  마지막 저장 시각:{" "}
+                  {savedHistory[0]
+                    ? new Date(savedHistory[0].savedAt).toLocaleString()
+                    : "-"}
                 </p>
-              ) : (
-                <div className="mt-2 space-y-3">
-                  <ul className="space-y-1 text-sm text-slate-600">
-                    <li>총 저장 건수: {savedHistory.length}건</li>
-                    <li>
-                      마지막 저장 시각:{" "}
-                      {new Date(savedHistory[0].savedAt).toLocaleString()}
-                    </li>
-                  </ul>
-
-                  <div className="hidden overflow-x-auto rounded-lg border border-slate-200 md:block">
-                    <table className="min-w-full text-xs sm:text-sm">
-                      <thead className="bg-slate-100 text-slate-700">
-                        <tr>
-                          <th className="px-2 py-2 text-left">저장시각</th>
-                          <th className="px-2 py-2 text-left">날짜</th>
-                          <th className="px-2 py-2 text-left">발생일</th>
-                          <th className="px-2 py-2 text-left">결제처/내용</th>
-                          <th className="px-2 py-2 text-right">금액</th>
-                          <th className="px-2 py-2 text-left">구분</th>
-                          <th className="px-2 py-2 text-left">종류</th>
-                          <th className="px-2 py-2 text-left">비고</th>
-                          <th className="px-2 py-2 text-right">관리</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {savedHistory.slice(0, 20).map((item, index) => (
-                          <tr
-                            key={`${item.savedAt}-${item.date}-${item.amount}-${index}`}
-                            className="border-t border-slate-200"
-                          >
-                            <td className="whitespace-nowrap px-2 py-2 text-xs">
-                              {new Date(item.savedAt).toLocaleString()}
-                            </td>
-                            <td className="whitespace-nowrap px-2 py-2">
-                              <input
-                                type="date"
-                                value={item.date}
-                                onChange={(e) =>
-                                  handleEditSavedRow(index, "date", e.target.value)
-                                }
-                                className="w-28 rounded border border-slate-300 px-2 py-1"
-                              />
-                            </td>
-                            <td className="whitespace-nowrap px-2 py-2">
-                              <input
-                                type="date"
-                                value={item.occurredDate}
-                                onChange={(e) =>
-                                  handleEditSavedRow(
-                                    index,
-                                    "occurredDate",
-                                    e.target.value,
-                                  )
-                                }
-                                className="w-28 rounded border border-slate-300 px-2 py-1"
-                              />
-                            </td>
-                            <td className="px-2 py-2">
-                              <input
-                                value={item.description}
-                                onChange={(e) =>
-                                  handleEditSavedRow(
-                                    index,
-                                    "description",
-                                    e.target.value,
-                                  )
-                                }
-                                className="w-44 rounded border border-slate-300 px-2 py-1"
-                              />
-                            </td>
-                            <td className="whitespace-nowrap px-2 py-2 text-right">
-                              <input
-                                type="number"
-                                value={item.amount}
-                                onChange={(e) =>
-                                  handleEditSavedRow(index, "amount", e.target.value)
-                                }
-                                className="w-28 rounded border border-slate-300 px-2 py-1 text-right"
-                              />
-                            </td>
-                            <td className="whitespace-nowrap px-2 py-2">
-                              <select
-                                value={item.type}
-                                onChange={(e) =>
-                                  handleEditSavedRow(index, "type", e.target.value)
-                                }
-                                className="w-20 rounded border border-slate-300 px-2 py-1"
-                              >
-                                <option value="지출">지출</option>
-                                <option value="수입">수입</option>
-                              </select>
-                            </td>
-                            <td className="px-2 py-2">
-                              <select
-                                value={item.category}
-                                onChange={(e) =>
-                                  handleEditSavedRow(index, "category", e.target.value)
-                                }
-                                className="w-28 rounded border border-slate-300 px-2 py-1"
-                              >
-                                <option value="">선택</option>
-                                {CATEGORY_OPTIONS.map((option) => (
-                                  <option key={option} value={option}>
-                                    {option}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className="px-2 py-2">
-                              <input
-                                value={item.note}
-                                onChange={(e) =>
-                                  handleEditSavedRow(index, "note", e.target.value)
-                                }
-                                className="w-36 rounded border border-slate-300 px-2 py-1"
-                              />
-                            </td>
-                            <td className="px-2 py-2 text-right">
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteSavedRow(index)}
-                                className="rounded border border-rose-300 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50"
-                              >
-                                삭제
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="space-y-2 md:hidden">
-                    {savedHistory.slice(0, 20).map((item, index) => (
-                      <div
-                        key={`${item.savedAt}-${item.date}-${item.amount}-${index}-mobile`}
-                        className="rounded-lg border border-slate-200 bg-white p-3"
-                      >
-                        <p className="text-[11px] text-slate-500">
-                          저장시각: {new Date(item.savedAt).toLocaleString()}
-                        </p>
-                        <div className="mt-2 grid grid-cols-2 gap-2">
-                          <input
-                            type="date"
-                            value={item.date}
-                            onChange={(e) =>
-                              handleEditSavedRow(index, "date", e.target.value)
-                            }
-                            className="rounded border border-slate-300 px-2 py-2 text-sm"
-                          />
-                          <input
-                            type="date"
-                            value={item.occurredDate}
-                            onChange={(e) =>
-                              handleEditSavedRow(index, "occurredDate", e.target.value)
-                            }
-                            className="rounded border border-slate-300 px-2 py-2 text-sm"
-                          />
-                          <input
-                            value={item.amount}
-                            onChange={(e) =>
-                              handleEditSavedRow(index, "amount", e.target.value)
-                            }
-                            className="rounded border border-slate-300 px-2 py-2 text-sm text-right"
-                          />
-                          <select
-                            value={item.type}
-                            onChange={(e) =>
-                              handleEditSavedRow(index, "type", e.target.value)
-                            }
-                            className="rounded border border-slate-300 px-2 py-2 text-sm"
-                          >
-                            <option value="지출">지출</option>
-                            <option value="수입">수입</option>
-                          </select>
-                        </div>
-                        <input
-                          value={item.description}
-                          onChange={(e) =>
-                            handleEditSavedRow(index, "description", e.target.value)
-                          }
-                          className="mt-2 w-full rounded border border-slate-300 px-2 py-2 text-sm"
-                        />
-                        <div className="mt-2 grid grid-cols-2 gap-2">
-                          <select
-                            value={item.category}
-                            onChange={(e) =>
-                              handleEditSavedRow(index, "category", e.target.value)
-                            }
-                            className="rounded border border-slate-300 px-2 py-2 text-sm"
-                          >
-                            <option value="">선택</option>
-                            {CATEGORY_OPTIONS.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            value={item.note}
-                            onChange={(e) =>
-                              handleEditSavedRow(index, "note", e.target.value)
-                            }
-                            className="rounded border border-slate-300 px-2 py-2 text-sm"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteSavedRow(index)}
-                          className="mt-2 w-full rounded border border-rose-300 px-2 py-2 text-xs text-rose-700 hover:bg-rose-50"
-                        >
-                          이 항목 삭제
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  {savedHistory.length > 20 ? (
-                    <p className="text-xs text-slate-500">
-                      최근 20건만 표시 중입니다. (전체 {savedHistory.length}건)
-                    </p>
-                  ) : null}
-
-                  <div className="rounded-lg border border-slate-200 p-3">
-                    <h4 className="text-sm font-semibold text-slate-800">
-                      발생일 기준 월별 손익
-                    </h4>
-                    <div className="mt-2 overflow-x-auto">
-                      <table className="min-w-full text-xs sm:text-sm">
-                        <thead className="bg-slate-100 text-slate-700">
-                          <tr>
-                            <th className="px-2 py-2 text-left">월</th>
-                            <th className="px-2 py-2 text-right">수입</th>
-                            <th className="px-2 py-2 text-right">지출</th>
-                            <th className="px-2 py-2 text-right">순수익</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {monthlySummary.map((row) => (
-                            <tr key={row.month} className="border-t border-slate-200">
-                              <td className="whitespace-nowrap px-2 py-2">{row.month}</td>
-                              <td className="whitespace-nowrap px-2 py-2 text-right">
-                                {row.income.toLocaleString()}원
-                              </td>
-                              <td className="whitespace-nowrap px-2 py-2 text-right">
-                                {row.expense.toLocaleString()}원
-                              </td>
-                              <td className="whitespace-nowrap px-2 py-2 text-right font-semibold">
-                                {row.net.toLocaleString()}원
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              )}
+                <p className="text-xs text-slate-500">
+                  상세 수정/삭제/월별 손익은 저장된 내역 페이지에서 확인하세요.
+                </p>
+              </div>
             </div>
           </article>
 
@@ -1063,108 +748,6 @@ export default function Home() {
           </article>
         </section>
       </main>
-
-      {isSavedModalOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
-          onClick={() => setIsSavedModalOpen(false)}
-        >
-          <div
-            className="h-[88vh] w-full overflow-hidden rounded-t-2xl bg-white sm:h-[90vh] sm:max-w-6xl sm:rounded-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-slate-200 p-4">
-              <h3 className="text-base font-semibold text-slate-900">저장된 내역</h3>
-              <button
-                type="button"
-                className="rounded-md border border-slate-300 px-3 py-1 text-sm"
-                onClick={() => setIsSavedModalOpen(false)}
-              >
-                닫기
-              </button>
-            </div>
-            <div className="h-[calc(88vh-57px)] overflow-y-auto p-4 sm:h-[calc(90vh-57px)]">
-              {savedHistory.length === 0 ? (
-                <p className="text-sm text-slate-500">저장된 내역이 없습니다.</p>
-              ) : (
-                <div className="space-y-2">
-                  {savedHistory.map((item, index) => (
-                    <div key={`${item.savedAt}-${index}`} className="rounded-lg border border-slate-200 p-3">
-                      <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                        <input
-                          type="date"
-                          value={item.date}
-                          onChange={(e) => handleEditSavedRow(index, "date", e.target.value)}
-                          className="rounded border border-slate-300 px-2 py-2"
-                        />
-                        <input
-                          type="date"
-                          value={item.occurredDate}
-                          onChange={(e) =>
-                            handleEditSavedRow(index, "occurredDate", e.target.value)
-                          }
-                          className="rounded border border-slate-300 px-2 py-2"
-                        />
-                        <input
-                          type="number"
-                          value={item.amount}
-                          onChange={(e) =>
-                            handleEditSavedRow(index, "amount", e.target.value)
-                          }
-                          className="rounded border border-slate-300 px-2 py-2 text-right"
-                        />
-                        <select
-                          value={item.type}
-                          onChange={(e) => handleEditSavedRow(index, "type", e.target.value)}
-                          className="rounded border border-slate-300 px-2 py-2"
-                        >
-                          <option value="지출">지출</option>
-                          <option value="수입">수입</option>
-                        </select>
-                      </div>
-                      <input
-                        value={item.description}
-                        onChange={(e) =>
-                          handleEditSavedRow(index, "description", e.target.value)
-                        }
-                        className="mt-2 w-full rounded border border-slate-300 px-2 py-2 text-sm"
-                      />
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                        <select
-                          value={item.category}
-                          onChange={(e) =>
-                            handleEditSavedRow(index, "category", e.target.value)
-                          }
-                          className="rounded border border-slate-300 px-2 py-2 text-sm"
-                        >
-                          <option value="">선택</option>
-                          {CATEGORY_OPTIONS.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          value={item.note}
-                          onChange={(e) => handleEditSavedRow(index, "note", e.target.value)}
-                          className="rounded border border-slate-300 px-2 py-2 text-sm"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteSavedRow(index)}
-                        className="mt-2 w-full rounded border border-rose-300 px-2 py-2 text-xs text-rose-700 hover:bg-rose-50"
-                      >
-                        이 항목 삭제
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {activePreviewUrl ? (
         <div
