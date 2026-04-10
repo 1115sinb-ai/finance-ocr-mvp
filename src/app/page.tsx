@@ -344,7 +344,15 @@ export default function Home() {
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-3 py-4 sm:gap-8 sm:px-6 sm:py-8 lg:px-8">
         <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-blue-700">MVP Step 4</p>
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm font-medium text-blue-700">MVP Step 4</p>
+            <Link
+              href="/saved"
+              className="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              회계장부 열기
+            </Link>
+          </div>
           <h1 className="mt-2 text-2xl font-bold sm:text-3xl">
             금융 결제내역 자동 정리
           </h1>
@@ -694,14 +702,6 @@ export default function Home() {
             <div className="mt-5 rounded-xl border border-slate-200 p-4">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold text-slate-800">저장된 내역</h3>
-                <div className="flex items-center gap-3">
-                  <Link
-                    href="/saved"
-                    className="text-xs text-blue-600 underline underline-offset-2 hover:text-blue-800"
-                  >
-                    저장된 내역 페이지 열기
-                  </Link>
-                </div>
               </div>
               <div className="mt-2 space-y-1 text-sm text-slate-600">
                 <p>총 저장 건수: {savedHistory.length}건</p>
