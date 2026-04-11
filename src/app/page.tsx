@@ -1,7 +1,7 @@
 "use client";
 
+import { normalizeDateInput, sortSavedLedgerOrder } from "@/lib/dates";
 import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
 
@@ -42,15 +42,6 @@ type SavedTransactionItem = TransactionItem & {
 
 const LOCAL_STORAGE_KEY = "finance-ocr-confirmed-transactions";
 const DRAFT_STORAGE_KEY = "finance-ocr-analysis-draft";
-
-function normalizeDateInput(value: string): string {
-  const raw = (value ?? "").trim();
-  if (!raw) return "";
-  const normalized = raw.replace(/[./]/g, "-");
-  const match = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (!match) return raw;
-  return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
-}
 
 function normalizeTransactionItem(item: Partial<TransactionItem>): TransactionItem {
   return {
@@ -102,9 +93,17 @@ export default function Home() {
           savedAt: item.savedAt ?? new Date().toISOString(),
         }));
       const deduped = dedupeByDateAmount(normalized);
-      setSavedHistory(deduped);
+      const sorted = sortSavedLedgerOrder(deduped);
+      setSavedHistory(sorted);
+      try {
+        const serialized = JSON.stringify(sorted);
+        if (serialized !== raw) {
+          localStorage.setItem(LOCAL_STORAGE_KEY, serialized);
+        }
+      } catch {
+        // ignore
+      }
       if (deduped.length !== normalized.length) {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(deduped));
         setSaveMessage(
           `기존 저장 내역에서 중복 ${normalized.length - deduped.length}건을 정리했습니다.`,
         );
@@ -324,7 +323,7 @@ export default function Home() {
     const newUniqueItems = analysisResult
       .filter((item) => !existingKeys.has(`${item.date}__${item.amount}`))
       .map((item) => ({ ...item, savedAt }));
-    const nextSaved = [...newUniqueItems, ...savedHistory];
+    const nextSaved = sortSavedLedgerOrder([...newUniqueItems, ...savedHistory]);
 
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(nextSaved));
@@ -346,12 +345,12 @@ export default function Home() {
         <header className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
             <p className="text-sm font-medium text-blue-700">MVP Step 4</p>
-            <Link
+            <a
               href="/saved"
               className="inline-flex w-full shrink-0 items-center justify-center rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto sm:py-2"
             >
               회계장부 열기
-            </Link>
+            </a>
           </div>
           <h1 className="mt-2 text-2xl font-bold sm:text-3xl">
             금융 결제내역 자동 정리
@@ -499,6 +498,8 @@ export default function Home() {
                         <td className="px-3 py-2">
                           <input
                             type="date"
+                            lang="ko-KR"
+                            autoComplete="off"
                             value={row.date}
                             onChange={(e) =>
                               handleEditRow(index, "date", e.target.value)
@@ -509,6 +510,8 @@ export default function Home() {
                         <td className="px-3 py-2">
                           <input
                             type="date"
+                            lang="ko-KR"
+                            autoComplete="off"
                             value={row.occurredDate}
                             onChange={(e) =>
                               handleEditRow(index, "occurredDate", e.target.value)
@@ -604,6 +607,8 @@ export default function Home() {
                         </label>
                         <input
                           type="date"
+                          lang="ko-KR"
+                          autoComplete="off"
                           value={row.date}
                           onChange={(e) => handleEditRow(index, "date", e.target.value)}
                           className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
@@ -615,6 +620,8 @@ export default function Home() {
                         </label>
                         <input
                           type="date"
+                          lang="ko-KR"
+                          autoComplete="off"
                           value={row.occurredDate}
                           onChange={(e) =>
                             handleEditRow(index, "occurredDate", e.target.value)

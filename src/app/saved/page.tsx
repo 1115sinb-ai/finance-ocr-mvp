@@ -1,6 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import {
+  ledgerDateSortKey,
+  normalizeDateInput,
+  sortSavedLedgerOrder,
+} from "@/lib/dates";
 import { useMemo, useState, useCallback } from "react";
 
 type TransactionType = "수입" | "지출";
@@ -34,15 +38,6 @@ const CATEGORY_OPTIONS = [
   "기타비용",
 ] as const;
 
-function normalizeDateInput(value: string): string {
-  const raw = (value ?? "").trim();
-  if (!raw) return "";
-  const normalized = raw.replace(/[./]/g, "-");
-  const match = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (!match) return raw;
-  return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
-}
-
 function normalizeSavedItem(item: Partial<SavedTransactionItem>): SavedTransactionItem {
   return {
     date: normalizeDateInput(item.date ?? ""),
@@ -64,7 +59,7 @@ export default function SavedPage() {
       if (!raw) return [];
       const parsed = JSON.parse(raw) as Partial<SavedTransactionItem>[];
       if (!Array.isArray(parsed)) return [];
-      return parsed.map(normalizeSavedItem);
+      return sortSavedLedgerOrder(parsed.map(normalizeSavedItem));
     } catch {
       return [];
     }
@@ -72,8 +67,9 @@ export default function SavedPage() {
   const [message, setMessage] = useState<string>("");
 
   const persist = useCallback((nextItems: SavedTransactionItem[]) => {
-    setSavedHistory(nextItems);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(nextItems));
+    const sorted = sortSavedLedgerOrder(nextItems);
+    setSavedHistory(sorted);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(sorted));
   }, []);
 
   const handleEdit = useCallback(
@@ -130,7 +126,7 @@ export default function SavedPage() {
     }
     return Array.from(map.entries())
       .map(([month, v]) => ({ month, income: v.income, expense: v.expense, net: v.income - v.expense }))
-      .sort((a, b) => b.month.localeCompare(a.month));
+      .sort((a, b) => b.month.localeCompare(a.month, "en-CA", { numeric: true }));
   }, [savedHistory]);
 
   return (
@@ -138,12 +134,12 @@ export default function SavedPage() {
       <main className="mx-auto w-full min-w-0 max-w-6xl px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-8 sm:pb-8 sm:pt-8">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="min-w-0 text-xl font-bold sm:text-2xl">저장된 내역 관리</h1>
-          <Link
+          <a
             href="/"
             className="inline-flex shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:font-normal sm:text-blue-600 sm:underline sm:underline-offset-2"
           >
             메인으로 돌아가기
-          </Link>
+          </a>
         </div>
 
         {message ? <p className="mb-3 text-sm text-slate-600">{message}</p> : null}
@@ -157,7 +153,7 @@ export default function SavedPage() {
           ) : (
             savedHistory.map((item, index) => (
               <div
-                key={`${item.savedAt}-${index}`}
+                key={`${ledgerDateSortKey(item)}-${item.savedAt}-${item.amount}-${index}`}
                 className="min-w-0 rounded-lg border border-slate-200 bg-white p-3"
               >
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -165,6 +161,8 @@ export default function SavedPage() {
                     <span className="block text-xs font-medium text-slate-500">날짜</span>
                     <input
                       type="date"
+                      lang="ko-KR"
+                      autoComplete="off"
                       value={item.date}
                       onChange={(e) => handleEdit(index, "date", e.target.value)}
                       className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
@@ -174,6 +172,8 @@ export default function SavedPage() {
                     <span className="block text-xs font-medium text-slate-500">발생일</span>
                     <input
                       type="date"
+                      lang="ko-KR"
+                      autoComplete="off"
                       value={item.occurredDate}
                       onChange={(e) => handleEdit(index, "occurredDate", e.target.value)}
                       className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
