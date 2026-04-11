@@ -82,7 +82,7 @@ export default function SavedPage() {
       field: "date" | "occurredDate" | "description" | "amount" | "type" | "category" | "note",
       value: string,
     ) => {
-      const next = savedHistory.map((item, itemIndex) => {
+      const next = savedHistory.map((item, itemIndex): SavedTransactionItem => {
         if (itemIndex !== index) return item;
         if (field === "amount") {
           const amount = Number(value) || 0;
@@ -95,7 +95,13 @@ export default function SavedPage() {
         if (field === "date" || field === "occurredDate") {
           return { ...item, [field]: normalizeDateInput(value) };
         }
-        return { ...item, [field]: value };
+        if (field === "description") {
+          return { ...item, description: value };
+        }
+        if (field === "category") {
+          return { ...item, category: value };
+        }
+        return { ...item, note: value };
       });
       persist(next);
       setMessage("저장된 내역을 수정했습니다.");
@@ -128,11 +134,14 @@ export default function SavedPage() {
   }, [savedHistory]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <main className="mx-auto w-full max-w-6xl px-3 py-4 sm:px-6 sm:py-8">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold sm:text-2xl">저장된 내역 관리</h1>
-          <Link href="/" className="text-sm text-blue-600 underline underline-offset-2">
+    <div className="min-h-screen min-w-0 bg-slate-50 text-slate-900">
+      <main className="mx-auto w-full min-w-0 max-w-6xl px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-8 sm:pb-8 sm:pt-8">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="min-w-0 text-xl font-bold sm:text-2xl">저장된 내역 관리</h1>
+          <Link
+            href="/"
+            className="inline-flex shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:font-normal sm:text-blue-600 sm:underline sm:underline-offset-2"
+          >
             메인으로 돌아가기
           </Link>
         </div>
@@ -147,29 +156,85 @@ export default function SavedPage() {
             </div>
           ) : (
             savedHistory.map((item, index) => (
-              <div key={`${item.savedAt}-${index}`} className="rounded-lg border border-slate-200 bg-white p-3">
-                <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-                  <input type="date" value={item.date} onChange={(e) => handleEdit(index, "date", e.target.value)} className="rounded border border-slate-300 px-2 py-2" />
-                  <input type="date" value={item.occurredDate} onChange={(e) => handleEdit(index, "occurredDate", e.target.value)} className="rounded border border-slate-300 px-2 py-2" />
-                  <input type="number" value={item.amount} onChange={(e) => handleEdit(index, "amount", e.target.value)} className="rounded border border-slate-300 px-2 py-2 text-right" />
-                  <select value={item.type} onChange={(e) => handleEdit(index, "type", e.target.value)} className="rounded border border-slate-300 px-2 py-2">
-                    <option value="지출">지출</option>
-                    <option value="수입">수입</option>
-                  </select>
+              <div
+                key={`${item.savedAt}-${index}`}
+                className="min-w-0 rounded-lg border border-slate-200 bg-white p-3"
+              >
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="min-w-0 space-y-1">
+                    <span className="block text-xs font-medium text-slate-500">날짜</span>
+                    <input
+                      type="date"
+                      value={item.date}
+                      onChange={(e) => handleEdit(index, "date", e.target.value)}
+                      className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
+                    />
+                  </div>
+                  <div className="min-w-0 space-y-1">
+                    <span className="block text-xs font-medium text-slate-500">발생일</span>
+                    <input
+                      type="date"
+                      value={item.occurredDate}
+                      onChange={(e) => handleEdit(index, "occurredDate", e.target.value)}
+                      className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
+                    />
+                  </div>
+                  <div className="min-w-0 space-y-1">
+                    <span className="block text-xs font-medium text-slate-500">금액</span>
+                    <input
+                      type="number"
+                      value={item.amount}
+                      onChange={(e) => handleEdit(index, "amount", e.target.value)}
+                      className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2 text-right"
+                    />
+                  </div>
+                  <div className="min-w-0 space-y-1">
+                    <span className="block text-xs font-medium text-slate-500">구분</span>
+                    <select
+                      value={item.type}
+                      onChange={(e) => handleEdit(index, "type", e.target.value)}
+                      className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
+                    >
+                      <option value="지출">지출</option>
+                      <option value="수입">수입</option>
+                    </select>
+                  </div>
                 </div>
-                <input value={item.description} onChange={(e) => handleEdit(index, "description", e.target.value)} className="mt-2 w-full rounded border border-slate-300 px-2 py-2 text-sm" />
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <select value={item.category} onChange={(e) => handleEdit(index, "category", e.target.value)} className="rounded border border-slate-300 px-2 py-2 text-sm">
-                    <option value="">선택</option>
-                    {CATEGORY_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                  <input value={item.note} onChange={(e) => handleEdit(index, "note", e.target.value)} className="rounded border border-slate-300 px-2 py-2 text-sm" />
+                <input
+                  value={item.description}
+                  onChange={(e) => handleEdit(index, "description", e.target.value)}
+                  className="mt-3 box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
+                />
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="min-w-0 space-y-1">
+                    <span className="block text-xs font-medium text-slate-500">종류</span>
+                    <select
+                      value={item.category}
+                      onChange={(e) => handleEdit(index, "category", e.target.value)}
+                      className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
+                    >
+                      <option value="">선택</option>
+                      {CATEGORY_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="min-w-0 space-y-1">
+                    <span className="block text-xs font-medium text-slate-500">비고</span>
+                    <input
+                      value={item.note}
+                      onChange={(e) => handleEdit(index, "note", e.target.value)}
+                      className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
+                    />
+                  </div>
                 </div>
-                <button type="button" onClick={() => handleDelete(index)} className="mt-2 w-full rounded border border-rose-300 px-2 py-2 text-xs text-rose-700 hover:bg-rose-50">
+                <button
+                  type="button"
+                  onClick={() => handleDelete(index)}
+                  className="mt-3 w-full rounded border border-rose-300 px-3 py-2.5 text-sm text-rose-700 hover:bg-rose-50 sm:py-2 sm:text-xs"
+                >
                   이 항목 삭제
                 </button>
               </div>
@@ -177,10 +242,10 @@ export default function SavedPage() {
           )}
         </div>
 
-        <div className="mt-5 rounded-lg border border-slate-200 bg-white p-3">
+        <div className="mt-5 min-w-0 rounded-lg border border-slate-200 bg-white p-3">
           <h2 className="text-sm font-semibold text-slate-800">발생일 기준 월별 손익</h2>
-          <div className="mt-2 overflow-x-auto">
-            <table className="min-w-full text-xs sm:text-sm">
+          <div className="mt-2 -mx-1 overflow-x-auto px-1 sm:mx-0 sm:px-0">
+            <table className="w-full min-w-[280px] text-xs sm:min-w-0 sm:text-sm">
               <thead className="bg-slate-100 text-slate-700">
                 <tr>
                   <th className="px-2 py-2 text-left">월</th>

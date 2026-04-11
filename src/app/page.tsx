@@ -341,14 +341,14 @@ export default function Home() {
   }, [analysisResult, savedHistory]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-3 py-4 sm:gap-8 sm:px-6 sm:py-8 lg:px-8">
-        <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
+    <div className="min-h-screen min-w-0 bg-slate-50 text-slate-900">
+      <main className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-6 px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:gap-8 sm:px-6 sm:py-8 sm:pb-8 sm:pt-8 lg:px-8">
+        <header className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
             <p className="text-sm font-medium text-blue-700">MVP Step 4</p>
             <Link
               href="/saved"
-              className="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              className="inline-flex w-full shrink-0 items-center justify-center rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto sm:py-2"
             >
               회계장부 열기
             </Link>
@@ -362,8 +362,8 @@ export default function Home() {
           </p>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-3">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+        <section className="grid min-w-0 gap-6 lg:grid-cols-3">
+          <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
             <h2 className="text-lg font-semibold">1) 이미지 업로드</h2>
             <p className="mt-2 text-sm text-slate-600">
               PNG/JPG 스크린샷을 드래그 앤 드롭하거나 클릭하여 여러 장
@@ -423,8 +423,8 @@ export default function Home() {
             )}
 
             {selectedFiles.length > 0 ? (
-              <div className="mt-3 flex items-center justify-between rounded-xl bg-slate-100 p-3 text-xs text-slate-600">
-                <span>{selectedFiles.length}개 파일 선택됨</span>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-100 p-3 text-xs text-slate-600">
+                <span className="min-w-0">{selectedFiles.length}개 파일 선택됨</span>
                 <button
                   type="button"
                   className="rounded-md border border-slate-300 px-2 py-1 hover:bg-white"
@@ -459,7 +459,7 @@ export default function Home() {
             </button>
           </article>
 
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-lg font-semibold">상태</h2>
             <ul className="mt-3 space-y-2 text-sm text-slate-600">
               {statusItems.map((item) => (
@@ -469,15 +469,15 @@ export default function Home() {
           </article>
         </section>
 
-        <section className="grid gap-6">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="grid min-w-0 gap-6">
+          <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-lg font-semibold">3) 검토 및 확정</h2>
             <p className="mt-2 text-sm text-slate-600">
               분석 내역을 표로 확인하고 수정/확정합니다. 수입/지출 합계도 함께
               계산됩니다.
             </p>
-            <div className="mt-4 hidden overflow-x-auto rounded-xl border border-slate-200 md:block">
-              <table className="min-w-full text-sm">
+            <div className="mt-4 hidden min-w-0 overflow-x-auto rounded-xl border border-slate-200 md:block">
+              <table className="min-w-[720px] w-full text-sm">
                 <thead className="bg-slate-100 text-slate-700">
                   <tr>
                     <th className="px-3 py-2 text-left">날짜</th>
@@ -595,72 +595,100 @@ export default function Home() {
                 analysisResult.map((row, index) => (
                   <div
                     key={`${row.date}-${row.occurredDate}-${row.description}-${index}-mobile`}
-                    className="rounded-xl border border-slate-200 bg-white p-3"
+                    className="min-w-0 rounded-xl border border-slate-200 bg-white p-3"
                   >
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <label className="text-slate-500">날짜</label>
-                      <input
-                        type="date"
-                        value={row.date}
-                        onChange={(e) => handleEditRow(index, "date", e.target.value)}
-                        className="rounded border border-slate-300 px-2 py-1 text-sm"
-                      />
-                      <label className="text-slate-500">발생일</label>
-                      <input
-                        type="date"
-                        value={row.occurredDate}
-                        onChange={(e) =>
-                          handleEditRow(index, "occurredDate", e.target.value)
-                        }
-                        className="rounded border border-slate-300 px-2 py-1 text-sm"
-                      />
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="min-w-0 space-y-1">
+                        <label className="block text-xs font-medium text-slate-500">
+                          날짜
+                        </label>
+                        <input
+                          type="date"
+                          value={row.date}
+                          onChange={(e) => handleEditRow(index, "date", e.target.value)}
+                          className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
+                        />
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <label className="block text-xs font-medium text-slate-500">
+                          발생일
+                        </label>
+                        <input
+                          type="date"
+                          value={row.occurredDate}
+                          onChange={(e) =>
+                            handleEditRow(index, "occurredDate", e.target.value)
+                          }
+                          className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
+                        />
+                      </div>
                     </div>
-                    <div className="mt-2 space-y-2">
+                    <div className="mt-3 space-y-3">
                       <input
                         value={row.description}
                         onChange={(e) =>
                           handleEditRow(index, "description", e.target.value)
                         }
                         placeholder="결제처/내용"
-                        className="w-full rounded border border-slate-300 px-2 py-2 text-sm"
+                        className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
                       />
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="number"
-                          value={row.amount}
-                          onChange={(e) => handleEditRow(index, "amount", e.target.value)}
-                          className="w-full rounded border border-slate-300 px-2 py-2 text-sm text-right"
-                        />
-                        <select
-                          value={row.type}
-                          onChange={(e) => handleEditRow(index, "type", e.target.value)}
-                          className="w-full rounded border border-slate-300 px-2 py-2 text-sm"
-                        >
-                          <option value="지출">지출</option>
-                          <option value="수입">수입</option>
-                        </select>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="min-w-0 space-y-1">
+                          <span className="block text-xs font-medium text-slate-500">
+                            금액
+                          </span>
+                          <input
+                            type="number"
+                            value={row.amount}
+                            onChange={(e) => handleEditRow(index, "amount", e.target.value)}
+                            className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2 text-right"
+                          />
+                        </div>
+                        <div className="min-w-0 space-y-1">
+                          <span className="block text-xs font-medium text-slate-500">
+                            구분
+                          </span>
+                          <select
+                            value={row.type}
+                            onChange={(e) => handleEditRow(index, "type", e.target.value)}
+                            className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
+                          >
+                            <option value="지출">지출</option>
+                            <option value="수입">수입</option>
+                          </select>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <select
-                          value={row.category}
-                          onChange={(e) =>
-                            handleEditRow(index, "category", e.target.value)
-                          }
-                          className="w-full rounded border border-slate-300 px-2 py-2 text-sm"
-                        >
-                          <option value="">종류 선택</option>
-                          {CATEGORY_OPTIONS.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          value={row.note}
-                          onChange={(e) => handleEditRow(index, "note", e.target.value)}
-                          placeholder="비고"
-                          className="w-full rounded border border-slate-300 px-2 py-2 text-sm"
-                        />
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="min-w-0 space-y-1">
+                          <span className="block text-xs font-medium text-slate-500">
+                            종류
+                          </span>
+                          <select
+                            value={row.category}
+                            onChange={(e) =>
+                              handleEditRow(index, "category", e.target.value)
+                            }
+                            className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
+                          >
+                            <option value="">종류 선택</option>
+                            {CATEGORY_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="min-w-0 space-y-1">
+                          <span className="block text-xs font-medium text-slate-500">
+                            비고
+                          </span>
+                          <input
+                            value={row.note}
+                            onChange={(e) => handleEditRow(index, "note", e.target.value)}
+                            placeholder="비고"
+                            className="box-border w-full min-w-0 rounded border border-slate-300 px-2 py-2"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -718,13 +746,13 @@ export default function Home() {
             </div>
           </article>
 
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <article className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <h2 className="text-lg font-semibold">2) AI 분석 결과(JSON)</h2>
             <p className="mt-2 text-sm text-slate-600">
               날짜, 결제처/내용, 금액, 입출금 구분을 추출해서 구조화합니다.
             </p>
-            <div className="mt-4 rounded-xl bg-slate-900 p-4 text-xs text-slate-100">
-              <pre className="whitespace-pre-wrap break-all">
+            <div className="mt-4 max-w-full overflow-x-auto rounded-xl bg-slate-900 p-3 text-xs text-slate-100 sm:p-4">
+              <pre className="min-w-0 whitespace-pre-wrap break-words [word-break:break-word]">
                 {analysisResult.length > 0
                   ? JSON.stringify(analysisResult, null, 2)
                   : `[
@@ -751,16 +779,16 @@ export default function Home() {
 
       {activePreviewUrl ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:p-4"
           onClick={() => setActivePreviewUrl(null)}
         >
           <div
-            className="relative w-full max-w-5xl overflow-hidden rounded-xl bg-white"
+            className="relative max-h-[min(90dvh,100svh)] w-full max-w-5xl overflow-hidden rounded-xl bg-white"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
-              className="absolute right-3 top-3 z-10 rounded-md bg-black/70 px-2 py-1 text-sm text-white"
+              className="absolute right-2 top-2 z-10 min-h-[44px] min-w-[44px] rounded-md bg-black/70 px-3 py-2 text-sm text-white sm:right-3 sm:top-3 sm:min-h-0 sm:min-w-0 sm:px-2 sm:py-1"
               onClick={() => setActivePreviewUrl(null)}
             >
               닫기
@@ -771,7 +799,7 @@ export default function Home() {
               width={2000}
               height={2000}
               unoptimized
-              className="h-auto max-h-[85vh] w-full object-contain"
+              className="h-auto max-h-[min(85dvh,90svh)] w-full object-contain"
             />
           </div>
         </div>
